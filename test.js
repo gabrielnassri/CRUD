@@ -1,35 +1,33 @@
-// Ejercicio CRUD         Gabriel Nassri
-
 const express = require("express");
 const swaggerJsDoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
 const mongoose = require("mongoose");
 require('dotenv').config();
 
-
 const app = express();
 
 app.use(express.json());
 
+// Conexión a MongoDB
 mongoose
   .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log("Conectado a MongoDB"))
+  .then(() => console.log("Conectado a la base de datos MongoDB"))
   .catch((error) => console.error("Error al conectar a MongoDB:", error));
 
+// Esquema para los libros
+const bookSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  author: { type: String, required: true },
+  isbn: { type: String, required: true, unique: true },
+  price: { type: Number },
+  imageUrl: { type: String },
+});
 
-
-  const libroSchema = new mongoose.Schema({
-    titulo: { type: String, required: true },
-    autor: { type: String, required: true },
-    isbn: { type: String, required: true, unique: true },
-    precio: { type: Number },
-    url: { type: String },
-  });
-
-  const Libro = mongoose.model("Libro", libroSchema);
+// Modelo de Libro
+const Book = mongoose.model("Book", bookSchema);
 
 // Configuración de Swagger
-const swaggerOptions = {
+const swaggerConfig = {
   definition: {
     openapi: "3.0.0",
     info: {
@@ -43,88 +41,88 @@ const swaggerOptions = {
       },
     ],
   },
-  apis: ["./test.js"],
+  apis: ["./routes.js"],
 };
 
-const swaggerDocs = swaggerJsDoc(swaggerOptions);
+const swaggerDocs = swaggerJsDoc(swaggerConfig);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 /**
  * @swagger
  * components:
  *   schemas:
- *     Libro:
+ *     Book:
  *       type: object
  *       required:
- *         - titulo
- *         - autor
+ *         - title
+ *         - author
  *         - isbn
- *         - precio
- *         - url
+ *         - price
+ *         - imageUrl
  *       properties:
- *         titulo:
+ *         title:
  *           type: string
  *           description: Título del libro
- *         autor:
+ *         author:
  *           type: string
  *           description: Autor del libro
  *         isbn:
  *           type: string
  *           description: ISBN único del libro
- *         precio:
+ *         price:
  *           type: number
  *           description: Precio del libro
- *         url:
+ *         imageUrl:
  *           type: string
  *           description: URL de referencia o imagen del libro
  */
 
 /**
  * @swagger
- * /biblioteca:
+ * /CRUD:
  *   post:
- *     summary: Crea un nuevo libro
+ *     summary: Crear un nuevo libro
  *     tags: [Libros]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Libro'
+ *             $ref: '#/components/schemas/Book'
  *     responses:
  *       201:
- *         description: Libro creado
+ *         description: Libro creado con éxito
  */
-app.post("/biblioteca", async (req, res) => {
+app.post("/CRUD", async (req, res) => {
   try {
-    const newLibro = new Libro(req.body);
-    const savedLibro = await newLibro.save();
-    res.status(201).json(savedLibro);
+    const newBook = new Book(req.body);
+    const savedBook = await newBook.save();
+    res.status(201).json(savedBook);
   } catch (error) {
-    res.status(400).json({ message: "Error al agregar el libro", error });
+    res.status(400).json({ message: "Error al crear el libro", error });
   }
 });
 
 /**
  * @swagger
- * /biblioteca:
+ * /CRUD:
  *   get:
- *     summary: Obtiene todos los libros
+ *     summary: Obtener todos los libros
  *     tags: [Libros]
  *     responses:
  *       200:
- *         description: Lista de libros
+ *         description: Lista de libros disponibles
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/Libro'
+ *                 $ref: '#/components/schemas/Book'
  */
-app.get("/biblioteca", async (req, res) => {
+app.get("/CRUD", async (req, res) => {
   try {
-    const libros = await Libro.find();
-    res.json(libros);
+    const allBooks = await Book.find();
+    res.json(allBooks);
   } catch (error) {
     res.status(500).json({ message: "Error al obtener los libros", error });
   }
@@ -132,9 +130,9 @@ app.get("/biblioteca", async (req, res) => {
 
 /**
  * @swagger
- * /biblioteca/{isbn}:
+ * /CRUD/{isbn}:
  *   get:
- *     summary: Obtiene un libro por ISBN
+ *     summary: Obtener un libro por ISBN
  *     tags: [Libros]
  *     parameters:
  *       - in: path
@@ -146,31 +144,27 @@ app.get("/biblioteca", async (req, res) => {
  *     responses:
  *       200:
  *         description: Detalles del libro
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Libro'
  *       404:
  *         description: Libro no encontrado
  */
-app.get("/biblioteca/:isbn", async (req, res) => {
+app.get("/CRUD/:isbn", async (req, res) => {
   try {
-    const libro = await Libro.findOne({ isbn: req.params.isbn });
-    if (!libro) return res.status(404).send("No se ha encontrado el libro.");
-    res.json(libro);
-  }  catch (error) {
-    // Manejo de errores en caso de problemas en la consulta
+    const book = await Book.findOne({ isbn: req.params.isbn });
+    if (!book) return res.status(404).send("Libro no encontrado.");
+    res.json(book);
+  } catch (error) {
     res.status(500).json({
       message: "Error al buscar el libro.",
-      error: error.message});
+      error: error.message
+    });
   }
 });
 
 /**
  * @swagger
- * /biblioteca/{isbn}:
+ * /CRUD/{isbn}:
  *   put:
- *     summary: Actualiza un libro por ISBN
+ *     summary: Actualizar un libro por ISBN
  *     tags: [Libros]
  *     parameters:
  *       - in: path
@@ -184,25 +178,24 @@ app.get("/biblioteca/:isbn", async (req, res) => {
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Libro'
+ *             $ref: '#/components/schemas/Book'
  *     responses:
  *       200:
- *         description: Libro actualizado exitosamente
+ *         description: Libro actualizado con éxito
  *       404:
  *         description: Libro no encontrado
  */
-app.put("/biblioteca/:isbn", async (req, res) => {
+app.put("/CRUD/:isbn", async (req, res) => {
   try {
-    const updatedLibro = await Libro.findOneAndUpdate(
+    const updatedBook = await Book.findOneAndUpdate(
       { isbn: req.params.isbn },
       req.body,                
-      { new: true }              
+      { new: true }             
     );
-
-    if (!updatedLibro) {
+    if (!updatedBook) {
       return res.status(404).json({ message: "Libro no encontrado." });
     }
-    res.json(updatedLibro);
+    res.json(updatedBook);
   } catch (error) {
     res.status(500).json({
       message: "Error al actualizar el libro.",
@@ -213,9 +206,9 @@ app.put("/biblioteca/:isbn", async (req, res) => {
 
 /**
  * @swagger
- * /biblioteca/{isbn}:
+ * /CRUD/{isbn}:
  *   delete:
- *     summary: Elimina un libro por ISBN
+ *     summary: Eliminar un libro por ISBN
  *     tags: [Libros]
  *     parameters:
  *       - in: path
@@ -230,15 +223,22 @@ app.put("/biblioteca/:isbn", async (req, res) => {
  *       404:
  *         description: Libro no encontrado
  */
-app.delete("/biblioteca/:isbn", (req, res) => {
-  const libroIndex = biblioteca.findIndex((i) => i.isbn === req.params.isbn);
-  if (libroIndex === -1)
-    return res.status(404).send("El libro no fue encontrado.");
-
-  const deletedLibro = biblioteca.splice(libroIndex, 1);
-  res.json(deletedLibro[0]);
+app.delete("/CRUD/:isbn", async (req, res) => {
+  try {
+    const deletedBook = await Book.findOneAndDelete({ isbn: req.params.isbn });
+    if (!deletedBook) {
+      return res.status(404).send("Libro no encontrado.");
+    }
+    res.json(deletedBook);
+  } catch (error) {
+    res.status(500).json({
+      message: "Error al eliminar el libro.",
+      error: error.message
+    });
+  }
 });
 
+// Iniciar el servidor
 app.listen(3000, () => {
   console.log("Servidor corriendo en el puerto 3000");
 });
